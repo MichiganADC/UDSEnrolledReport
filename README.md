@@ -3,6 +3,8 @@ Generate table summarizing cumulative UDS enrollment
 
 ## How to use
 
+Be sure you have [R](https://www.r-project.org/) and [RStudio](https://www.rstudio.com/) installed.
+
 ### \*Nix Environments (macOS, Linux, Unix)
 
 1. Download the REDCap report titled "UDS Enrollment 3/2017 Table".
