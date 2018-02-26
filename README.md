@@ -3,6 +3,8 @@ Generate table summarizing cumulative UDS enrollment
 
 ## How to use
 
+### \*Nix Environments (macOS, Linux, Unix)
+
 1. Download the REDCap report titled "UDS Enrollment 3/2017 Table".
 
 2. Place the downloaded csv report into the accompanying `input_csv` folder.
@@ -19,3 +21,6 @@ Generate table summarizing cumulative UDS enrollment
 
 4. An output table (as a csv file) will appear in the `output_csv` folder.
 
+### Windows Environments
+
+*coming soon*
