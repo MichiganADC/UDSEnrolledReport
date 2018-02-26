@@ -17,7 +17,7 @@ Be sure you have [R](https://www.r-project.org/) and [RStudio](https://www.rstud
 
     a. From \*Nix environments, type this command from a terminal 
     
-    ```/UDS_Enrolled_Report_table.R ./input_csv/[UMMAPMindsetRegistry_file].csv```,
+    ```./UDS_Enrolled_Report_table.R ./input_csv/[UMMAPMindsetRegistry_file].csv```,
     
     replacing `[UMMAPMindsetRegristy_file]` with the appropriate file name.
 
