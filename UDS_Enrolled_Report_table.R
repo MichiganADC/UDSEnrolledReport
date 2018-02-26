@@ -178,7 +178,8 @@ names(big_tbl) <- c("UDS dx", "Total Count",
 date_time <- substr(Sys.time(), 0, 16) %>% 
   gsub(pattern = " ", replacement = "_", .) %>% 
   gsub(pattern = ":", replacement = "-", .)
-write_csv(big_tbl, path = paste0("UDS_Enrolled_Table_", date_time, ".csv"), na = "")
+export_csv <- file.path("output_csv", paste0("UDS_Enrolled_Table_", date_time, ".csv"))
+write_csv(big_tbl, path = export_csv, na = "")
 
 
 
