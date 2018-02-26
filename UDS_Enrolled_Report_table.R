@@ -1,13 +1,31 @@
+#!/usr/bin/env RScript
+
 ## Script to generate UDS Enrollment Table
 ## ... Eventually this should be run through the REDCap API 
 ## ... with a de-identified data report
 ## ... and then we can eventually push it to a web server
 ## ... so that it's easily accessible from any device
 
+## To use from *Nix terminal, run this script
+## ./UDS_Enrolled_Report_table.R ./input_csv/[UMMAPMindsetRegistryFile].csv
+
+# Get command line arguments
+args = commandArgs(trailingOnly=TRUE)
+
+# Test if there is at least one argument: if not, return an error
+if (length(args) == 0) {
+  stop("At least one argument must be supplied: [UMMAPMindsetRegistryFile].csv", call.=FALSE)
+} 
+# Maybe use this later if the user wants to name the output csv file
+# else if (length(args)==1) {
+# # default output file
+# args[2] = "out.txt"
+#}
+
 library(tidyverse)
 
 # Choose the csv file from the UMMAP Mindset Registry RC report
-ms_reg_file <- file.choose()
+ms_reg_file <- args[1]
 ms_reg <- readr::read_csv(file = ms_reg_file, trim_ws = TRUE)
 
 names(ms_reg) <- 
@@ -17,20 +35,6 @@ names(ms_reg)
 # Clean out unneeded columns
 ms_reg <- ms_reg %>% 
   select(-Event_Name, -Deceased_, -Exam_Date) 
-
-### TESTING ###
-# single_grp_table <- function(x, group_var) {
-#   distinct_grp_vals <- distinct(x, !!group_var)
-#   x %>% 
-#     group_by(!!group_var) %>% 
-#     summarize(Count = n()) %>%
-#     right_join(distinct_grp_vals) %>% 
-#     arrange(!!group_var)
-# }
-# single_grp_table(ms_reg, group_var = quo(UDS_dx))
-# distinct(ms_reg, UDS_dx)
-# tibble(UDS_dx = distinct(ms_reg, UDS_dx))
-### TESTING ###
 
 # Fxn for outputting 
 single_grp_table <- function(x, group_var) {
@@ -126,6 +130,7 @@ blood_yes_cts <-
                           group_var = quo(UDS_dx),
                           filter_var = quo(Blood_Drawn_),
                           filter_var_string = "1. Yes")
+
 # Stitch all *_cts dfs together
 big_tbl <- 
   bind_cols(total_cts, sex_cts[, -1], race_cts[, -1], sex_race_cts[, -1], 
@@ -167,6 +172,7 @@ names(proportion_row) <- names(big_tbl)
 big_tbl <- rbind(big_tbl, proportion_row)
 # big_tbl
 
+# Rename headers (generalize this later)
 names(big_tbl) <- c("UDS dx", "Total Count",
                     "Sex\nFemale", "Sex\nMale", 
                     "Race\nBlack", "Race\nOther", "Race\nWhite", "Race\nNA", 
@@ -182,17 +188,30 @@ export_csv <- file.path("output_csv", paste0("UDS_Enrolled_Table_", date_time, "
 write_csv(big_tbl, path = export_csv, na = "")
 
 
-
-
-
-
-
-
-
-
-
-
+#########################
+### NSE dplyr TESTING ###
+#########################
+# single_grp_table <- function(x, group_var) {
+#   distinct_grp_vals <- distinct(x, !!group_var)
+#   x %>% 
+#     group_by(!!group_var) %>% 
+#     summarize(Count = n()) %>%
+#     right_join(distinct_grp_vals) %>% 
+#     arrange(!!group_var)
+# }
+# single_grp_table(ms_reg, group_var = quo(UDS_dx))
+# distinct(ms_reg, UDS_dx)
+# tibble(UDS_dx = distinct(ms_reg, UDS_dx))
+#########################
+### NSE dplyr TESTING ###
+#########################
 
 #####################
+#####################
+#####################
+#####################
 #### EXTRA SPACE ####
+#####################
+#####################
+#####################
 #####################
