@@ -6,6 +6,9 @@
 ## ... and then we can eventually push it to a web server
 ## ... so that it's easily accessible from any device
 
+#####
+## Passing downloaded REDCap report csv to script
+#####
 ## To use from *Nix terminal, run this script
 ## ./UDS_Enrolled_Report_table.R ./input_csv/[UMMAPMindsetRegistryFile].csv
 
@@ -21,6 +24,30 @@ if (length(args) == 0) {
 # # default output file
 # args[2] = "out.txt"
 #}
+
+#####
+## Using REDCap API
+####
+## To use, just run the script; all the tables/plots will be generated automatically
+
+# source("config.R") # contains API URL and API token
+# library(RCurl)
+# library(jsonlite)
+# # Project report
+# report_json <- postForm(
+#   uri = api_url,
+#   token = api_token,
+#   content = 'report',
+#   format = 'json',
+#   # report_id = '1680', # TBD
+#   rawOrLabel = 'label',
+#   rawOrLabelHeaders = 'label',
+#   exportCheckboxLabel = 'false',
+#   returnFormat = 'json',
+#   config = c(ssl_verifypeer = TRUE, ssl_verifyhost = TRUE)
+# )
+# report <- fromJSON(report_json)
+# print(report) # 'report should be the same as 'ms_reg' after the read_csv below
 
 library(tidyverse)
 
