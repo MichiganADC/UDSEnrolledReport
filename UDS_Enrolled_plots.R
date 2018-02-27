@@ -10,7 +10,8 @@
 
 # Test if there is at least one argument: if not, return an error
 # if (length(args) == 0) {
-#   stop("At least one argument must be supplied: [UMMAPMindsetRegistryFile].csv", call. = FALSE)
+#   stop("At least one argument must be supplied: [UMMAPMindsetRegistry].csv", 
+#        call. = FALSE)
 # } 
 # Maybe use this later if the user wants to name the output csv file
 # else if (length(args) == 1) {
@@ -25,7 +26,8 @@ library(scales)
 # Choose the csv file from the UMMAP Mindset Registry RC report
 # ms_reg_file <- args[1]
 ms_reg_file <- 
-  file.path("input_csv", "UMMAPMindsetRegistry_DATA_LABELS_2018-02-27_1118.csv")
+  file.path("input_csv", 
+            "UMMAPMindsetRegistry_DATA_LABELS_2018-02-27_1118.csv")
 ms_reg <- read_csv(file = ms_reg_file, trim_ws = TRUE)
 
 names(ms_reg) <- 
@@ -45,7 +47,8 @@ ms_reg <- ms_reg %>%
     UDS_dx == "Amnestic MCI-memory plus" ~ "MCI",
     UDS_dx == "Amnestic MCI, multiple domains" ~ "MCI",
     UDS_dx == "Amnestic MCI, single domain" ~ "MCI",
-    UDS_dx == "Amnestic multidomain dementia syndrome" ~ "Amnestic multidom dem",
+    UDS_dx == 
+      "Amnestic multidomain dementia syndrome" ~ "Amnestic multidom dem",
     UDS_dx == "Dem with Lewy bodies" ~ "LBD",
     # UDS_dx == "FTD" ~ "FTD",
     # UDS_dx == "Impaired, not MCI" ~ "Impaired, not MCI",
@@ -58,9 +61,11 @@ ms_reg <- ms_reg %>%
     is.na(UDS_dx) & is.na(Completed_Withdrew_) ~ "Pending consensus dx",
     TRUE ~ UDS_dx
   ))
-ms_reg$UDS_dx <- factor(ms_reg$UDS_dx, 
-                        levels = c("NL", "Impaired, not MCI", "MCI", "Probable AD", "Amnestic multidom dem",
-                                   "LBD", "FTD", "Pending consensus dx", "Withdrew"))
+ms_reg$UDS_dx <- 
+  factor(ms_reg$UDS_dx, 
+         levels = c("NL", "Impaired, not MCI", "MCI", "Probable AD", 
+                    "Amnestic multidom dem", "LBD", "FTD", 
+                    "Pending consensus dx", "Withdrew"))
 # Coerce 'Deceased_' column to logical
 ms_reg$Deceased_ <- as.logical(ms_reg$Deceased_)
 
@@ -84,7 +89,8 @@ ggplot(ms_reg, aes(x = Exam_Date)) +
                      breaks = seq(0, nrow(ms_reg) + 10, by = 10)) + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ggtitle(label = "Total Participants Over Time")
-ggsave("plots/UDS_Enrolled_plot-Total_participants.png", width = 6, height = 4)
+ggsave("plots/UDS_Enrolled_plot-Total_participants.png", 
+       width = 6, height = 4)
 
 # Plot by Sex
 sex_ct <- ms_reg %>%
@@ -103,16 +109,19 @@ ggplot(ms_reg, aes(x = Exam_Date, color = Sex)) +
                      breaks = seq(0, nrow(ms_reg) + 10, by = 10)) + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ggtitle(label = "Participants Over Time by Sex")
-ggsave("plots/UDS_Enrolled_plot-Participants_by_sex.png", width = 6, height = 4)
+ggsave("plots/UDS_Enrolled_plot-Participants_by_sex.png", 
+       width = 6, height = 4)
 
 # Plot by Race
 race_ct <- ms_reg %>% 
   group_by(Race) %>% 
   summarize(n = n())
 ms_reg <- ms_reg %>%
-  mutate(Race_Count = ifelse(Race == "Black", filter(race_ct, Race == "Black")$n,
-                      ifelse(Race == "Other", filter(race_ct, Race == "Other")$n,
-                      ifelse(Race == "White", filter(race_ct, Race == "White")$n, NA)))) %>% 
+  mutate(Race_Count = 
+           ifelse(Race == "Black", filter(race_ct, Race == "Black")$n,
+           ifelse(Race == "Other", filter(race_ct, Race == "Other")$n,
+           ifelse(Race == "White", filter(race_ct, Race == "White")$n, 
+                  NA)))) %>% 
   filter(!is.na(Race))
 ggplot(ms_reg, aes(x = Exam_Date, color = Race)) +
   geom_line(aes(len = Race_Count, y = ..y.. * len), stat = "ecdf") + 
@@ -124,7 +133,8 @@ ggplot(ms_reg, aes(x = Exam_Date, color = Race)) +
                      breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ggtitle(label = "Participants Over Time by Race")
-ggsave("plots/UDS_Enrolled_plot-Participants_by_race.png", width = 6, height = 4)
+ggsave("plots/UDS_Enrolled_plot-Participants_by_race.png", 
+       width = 6, height = 4)
 
 # Plot by Diagnosis
 dx_ct <- ms_reg %>%
@@ -135,11 +145,13 @@ ms_reg <- ms_reg %>%
     UDS_dx == "Amnestic multidom dem" ~ 
       filter(dx_ct, UDS_dx == "Amnestic multidom dem")$n,
     UDS_dx == "FTD" ~ filter(dx_ct, UDS_dx == "FTD")$n,
-    UDS_dx == "Impaired, not MCI" ~ filter(dx_ct, UDS_dx == "Impaired, not MCI")$n,
+    UDS_dx == 
+      "Impaired, not MCI" ~ filter(dx_ct, UDS_dx == "Impaired, not MCI")$n,
     UDS_dx == "LBD" ~ filter(dx_ct, UDS_dx == "LBD")$n,
     UDS_dx == "MCI" ~ filter(dx_ct, UDS_dx == "MCI")$n,
     UDS_dx == "NL" ~ filter(dx_ct, UDS_dx == "NL")$n,
-    UDS_dx == "Pending consensus dx" ~ filter(dx_ct, UDS_dx == "Pending consensus dx")$n,
+    UDS_dx == 
+      "Pending consensus dx" ~ filter(dx_ct, UDS_dx == "Pending consensus dx")$n,
     UDS_dx == "Probable AD" ~ filter(dx_ct, UDS_dx == "Probable AD")$n,
     UDS_dx == "Withdrew" ~ filter(dx_ct, UDS_dx == "Withdrew")$n
   ))
@@ -153,7 +165,8 @@ ggplot(ms_reg, aes(x = Exam_Date, color = UDS_dx)) +
                      breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ggtitle(label = "Participants Over Time by Diagnosis")
-ggsave("plots/UDS_Enrolled_plot-Participants_by_diagnosis.png", width = 6, height = 4)
+ggsave("plots/UDS_Enrolled_plot-Participants_by_diagnosis.png", 
+       width = 6, height = 4)
 
 # Set up target diagnoses
 # 03-01-2017 ... 03-01-2022
@@ -161,7 +174,8 @@ target_min_date <- as.Date("2017-03-01", format = "%Y-%m-%d")
 target_max_date <- as.Date("2022-03-01", format = "%Y-%m-%d")
 
 # NL diagnosis targets
-NL_target_df <- data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
+NL_target_df <- 
+  data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
 names(NL_target_df) <- names(ms_reg)
 NL_target_df$Subject_ID <- paste0("UM0000XXX", 0:5)
 NL_target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
@@ -185,7 +199,8 @@ ggplot(ms_reg_NL, aes(x = Exam_Date, color = UDS_dx, linetype = UDS_dx)) +
 ggsave("plots/UDS_Enrolled_plot-NL_targets.png", width = 5, height = 3.3)
 
 # MCI diagnosis targets
-MCI_target_df <- data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
+MCI_target_df <- 
+  data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
 names(MCI_target_df) <- names(ms_reg)
 MCI_target_df$Subject_ID <- paste0("UM0000XXX", 0:5)
 MCI_target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
@@ -209,7 +224,8 @@ ggplot(ms_reg_MCI, aes(x = Exam_Date, color = UDS_dx, linetype = UDS_dx)) +
 ggsave("plots/UDS_Enrolled_plot-MCI_targets.png", width = 5, height = 3.3)
 
 # AD diagnosis targets
-AD_target_df <- data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
+AD_target_df <- 
+  data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
 names(AD_target_df) <- names(ms_reg)
 AD_target_df$Subject_ID <- paste0("UM0000XXX", 0:5)
 AD_target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
@@ -233,7 +249,8 @@ ggplot(ms_reg_AD, aes(x = Exam_Date, color = UDS_dx, linetype = UDS_dx)) +
 ggsave("plots/UDS_Enrolled_plot-AD_targets.png", width = 5, height = 3.3)
 
 # LBD diagnosis targets
-LBD_target_df <- data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
+LBD_target_df <- 
+  data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
 names(LBD_target_df) <- names(ms_reg)
 LBD_target_df$Subject_ID <- paste0("UM0000XXX", 0:5)
 LBD_target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
@@ -257,7 +274,8 @@ ggplot(ms_reg_LBD, aes(x = Exam_Date, color = UDS_dx, linetype = UDS_dx)) +
 ggsave("plots/UDS_Enrolled_plot-LBD_targets.png", width = 5, height = 3.3)
 
 # FTD diagnosis targets
-FTD_target_df <- data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
+FTD_target_df <- 
+  data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
 names(FTD_target_df) <- names(ms_reg)
 FTD_target_df$Subject_ID <- paste0("UM0000XXX", 0:5)
 FTD_target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
@@ -282,7 +300,8 @@ ggsave("plots/UDS_Enrolled_plot-FTD_targets.png", width = 5, height = 3.3)
 
 # There has to be a better/scalable way to create these 
 # Cumulative Frequency Plots ...
-# maybe https://stackoverflow.com/questions/18379933/plotting-cumulative-counts-in-ggplot2
+# maybe:
+# https://stackoverflow.com/questions/18379933/plotting-cumulative-counts-in-ggplot2
 # Empirical Cumulative Distribution Function
 # df <- data.frame(
 #   x = c(rnorm(100, 0, 3), rnorm(100, 0, 10)),
