@@ -35,19 +35,20 @@ if (length(args) == 0) {
 # library(jsonlite)
 # # Project report
 # report_json <- postForm(
-#   uri = api_url,
-#   token = api_token,
+#   uri = API_URL,
+#   token = API_TOKEN,
 #   content = 'report',
 #   format = 'json',
-#   # report_id = '1680', # TBD
+#   report_id = REPORT_ID,
 #   rawOrLabel = 'label',
 #   rawOrLabelHeaders = 'label',
 #   exportCheckboxLabel = 'false',
 #   returnFormat = 'json',
-#   config = c(ssl_verifypeer = TRUE, ssl_verifyhost = TRUE)
+#   # .opts = list(ssl.verifypeer = TRUE)
+#   .opts = list(ssl.verifypeer = TRUE, verbose = TRUE)
 # )
-# report <- fromJSON(report_json)
-# print(report) # 'report should be the same as 'ms_reg' after the read_csv below
+# report_df <- fromJSON(report_json)
+# print(result_json) # 'report should be the same as 'ms_reg' after the read_csv below
 
 library(tidyverse)
 
