@@ -20,14 +20,12 @@
 #}
 
 library(tidyverse)
-library(plyr)
-library(scales)
 
 # Choose the csv file from the UMMAP Mindset Registry RC report
 # ms_reg_file <- args[1]
 ms_reg_file <- 
   file.path("input_csv", 
-            "UMMAPMindsetRegistry_DATA_LABELS_2018-02-27_1118.csv")
+            "UMMAPMindsetRegistry_DATA_LABELS_2018-03-05_1048.csv")
 ms_reg <- read_csv(file = ms_reg_file, trim_ws = TRUE)
 
 names(ms_reg) <- 
@@ -56,14 +54,14 @@ ms_reg <- ms_reg %>%
     UDS_dx == "Non-Amnestic MCI-multiple domains" ~ "MCI",
     UDS_dx == "Non-Amnestic MCI-single domain" ~ "MCI",
     UDS_dx == "Primary progressive aphasia" ~ "FTD",
-    # UDS_dx == "Probable AD" ~ "Probable AD",
+    UDS_dx == "Probable AD" ~ "AD",
     is.na(UDS_dx) & Completed_Withdrew_ == "Y" ~ "Withdrew",
     is.na(UDS_dx) & is.na(Completed_Withdrew_) ~ "Pending consensus dx",
     TRUE ~ UDS_dx
   ))
 ms_reg$UDS_dx <- 
   factor(ms_reg$UDS_dx, 
-         levels = c("NL", "Impaired, not MCI", "MCI", "Probable AD", 
+         levels = c("NL", "Impaired, not MCI", "MCI", "AD", 
                     "Amnestic multidom dem", "LBD", "FTD", 
                     "Pending consensus dx", "Withdrew"))
 # Coerce 'Deceased_' column to logical
@@ -78,239 +76,122 @@ ms_reg <- ms_reg %>%
 min_date <- as.Date("2017-03-01", format = "%Y-%m-%d")
 max_date <- max(ms_reg$Exam_Date)
 
-# Plot cumulative participants by 'Exam_Date' -- All participants
-ggplot(ms_reg, aes(x = Exam_Date)) +
-  geom_line(aes(len = nrow(ms_reg), y = len * ..y..), stat = "ecdf") +
-  scale_x_date(name = "Visit Date", 
-               date_labels = "%b %y", 
-               date_breaks = "1 month",
-               limits = c(min_date, max_date)) +
-  scale_y_continuous(name = "Cumulative Participants", 
-                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle(label = "Total Participants Over Time")
-ggsave("plots/UDS_Enrolled_plot-Total_participants.png", 
-       width = 6, height = 4)
-
-# Plot by Sex
-sex_ct <- ms_reg %>%
-  group_by(Sex) %>% 
-  summarize(n = n())
-ms_reg <- ms_reg %>%
-  mutate(Sex_Count = ifelse(Sex == "Female", sex_ct$n[1],
-                            ifelse(Sex == "Male", sex_ct$n[2], NA)))
-ggplot(ms_reg, aes(x = Exam_Date, color = Sex)) +
-  geom_line(aes(len = Sex_Count, y = ..y.. * len), stat = "ecdf") + 
-  scale_x_date(name = "Visit Date", 
-               date_labels = "%b %y", 
-               date_breaks = "1 month",
-               limits = c(min_date, max_date)) +
-  scale_y_continuous(name = "Cumulative Participants", 
-                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle(label = "Participants Over Time by Sex")
-ggsave("plots/UDS_Enrolled_plot-Participants_by_sex.png", 
-       width = 6, height = 4)
-
-# Plot by Race
-race_ct <- ms_reg %>% 
-  group_by(Race) %>% 
-  summarize(n = n())
-ms_reg <- ms_reg %>%
-  mutate(Race_Count = 
-           ifelse(Race == "Black", filter(race_ct, Race == "Black")$n,
-           ifelse(Race == "Other", filter(race_ct, Race == "Other")$n,
-           ifelse(Race == "White", filter(race_ct, Race == "White")$n, 
-                  NA)))) %>% 
-  filter(!is.na(Race))
-ggplot(ms_reg, aes(x = Exam_Date, color = Race)) +
-  geom_line(aes(len = Race_Count, y = ..y.. * len), stat = "ecdf") + 
-  scale_x_date(name = "Visit Date", 
-               date_labels = "%b %y", 
-               date_breaks = "1 month",
-               limits = c(min_date, max_date)) +
-  scale_y_continuous(name = "Cumulative Participants", 
-                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle(label = "Participants Over Time by Race")
-ggsave("plots/UDS_Enrolled_plot-Participants_by_race.png", 
-       width = 6, height = 4)
-
-# Plot by Diagnosis
-dx_ct <- ms_reg %>%
-  group_by(UDS_dx) %>% 
-  summarize(n = n())
-ms_reg <- ms_reg %>% 
-  mutate(Dx_Count = case_when(
-    UDS_dx == "Amnestic multidom dem" ~ 
-      filter(dx_ct, UDS_dx == "Amnestic multidom dem")$n,
-    UDS_dx == "FTD" ~ filter(dx_ct, UDS_dx == "FTD")$n,
-    UDS_dx == 
-      "Impaired, not MCI" ~ filter(dx_ct, UDS_dx == "Impaired, not MCI")$n,
-    UDS_dx == "LBD" ~ filter(dx_ct, UDS_dx == "LBD")$n,
-    UDS_dx == "MCI" ~ filter(dx_ct, UDS_dx == "MCI")$n,
-    UDS_dx == "NL" ~ filter(dx_ct, UDS_dx == "NL")$n,
-    UDS_dx == 
-      "Pending consensus dx" ~ filter(dx_ct, UDS_dx == "Pending consensus dx")$n,
-    UDS_dx == "Probable AD" ~ filter(dx_ct, UDS_dx == "Probable AD")$n,
-    UDS_dx == "Withdrew" ~ filter(dx_ct, UDS_dx == "Withdrew")$n
-  ))
-ggplot(ms_reg, aes(x = Exam_Date, color = UDS_dx)) +
-  geom_line(aes(len = Dx_Count, y = ..y.. * len), stat = "ecdf", size = 1) +
+# Plot cumulative participants
+ggplot(ms_reg, aes(x = Exam_Date, y = as.numeric(rownames(ms_reg)))) +
+  geom_line() +
+  geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
   scale_x_date(name = "Visit Date",
                date_labels = "%b %y",
                date_breaks = "1 month",
-               limits = c(min_date, max_date)) +
+               date_minor_breaks = "1 month",
+               limits = as.Date(c("2017-03-01", Sys.Date()))) +
+  scale_y_continuous(name = "Cumulative Participants",
+                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle(label = "Total Participants Over Time")
+ggsave(filename = "plots/UDS_Enrolled_plot-Total_participants.png", width = 6, height = 4)
+
+
+## Count columns by group (Sex, Race, Diagnosis, ...)
+ms_reg <- bind_cols(ms_reg, data.frame(units = rep(1, nrow(ms_reg))))
+# Sex
+ms_reg <- ms_reg %>%
+  dplyr::group_by(Sex) %>% 
+  dplyr::mutate(SexCumSum = cumsum(units))
+# Race
+ms_reg <- ms_reg %>%
+  dplyr::group_by(Race) %>% 
+  dplyr::mutate(RaceCumSum = cumsum(units))
+# Diagnosis (UDS_dx)
+ms_reg <- ms_reg %>% 
+  dplyr::group_by(UDS_dx) %>% 
+  dplyr::mutate(DxCumSum = cumsum(units))
+
+# Plot cumulative participants by Sex
+ggplot(ms_reg, aes(x = Exam_Date, y = SexCumSum, group = Sex, color = Sex)) + 
+  geom_line() +
+  geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
+  scale_x_date(name = "Visit Date",
+               date_labels = "%b %y",
+               date_breaks = "1 month",
+               date_minor_breaks = "1 month",
+               limits = as.Date(c("2017-03-01", Sys.Date()))) +
+  scale_y_continuous(name = "Cumulative Participants",
+                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle(label = "Participants Over Time by Sex")
+ggsave(filename = "plots/UDS_Enrolled_plot-Participants_by_sex.png", width = 6, height = 4)
+# Plot cumulative participants by Race
+ggplot(ms_reg, aes(x = Exam_Date, y = RaceCumSum, gruop = Race, color = Race)) + 
+  geom_line() +
+  geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
+  scale_x_date(name = "Visit Date",
+               date_labels = "%b %y",
+               date_breaks = "1 month",
+               date_minor_breaks = "1 month",
+               limits = as.Date(c("2017-03-01", Sys.Date()))) +
+  scale_y_continuous(name = "Cumulative Participants",
+                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle(label = "Participants Over Time by Race")
+ggsave(filename = "plots/UDS_Enrolled_plot-Participants_by_race.png", width = 6, height = 4)
+# Plot cumulative participants by Diagnosis (UDS_dx)
+ggplot(ms_reg, aes(x = Exam_Date, y = DxCumSum, group = UDS_dx, color = UDS_dx)) +
+  geom_line() +
+  geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
+  scale_x_date(name = "Visit Date",
+               date_labels = "%b %y",
+               date_breaks = "1 month",
+               date_minor_breaks = "1 month",
+               limits = as.Date(c("2017-03-01", Sys.Date()))) +
   scale_y_continuous(name = "Cumulative Participants",
                      breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ggtitle(label = "Participants Over Time by Diagnosis")
-ggsave("plots/UDS_Enrolled_plot-Participants_by_diagnosis.png", 
-       width = 6, height = 4)
+ggsave(filename = "plots/UDS_Enrolled_plot-Participants_by_diagnosis.png", width = 6, height = 4)
 
-# Set up target diagnoses
-# 03-01-2017 ... 03-01-2022
-target_min_date <- as.Date("2017-03-01", format = "%Y-%m-%d")
-target_max_date <- as.Date("2022-03-01", format = "%Y-%m-%d")
 
-# NL diagnosis targets
-NL_target_df <- 
-  data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
-names(NL_target_df) <- names(ms_reg)
-NL_target_df$Subject_ID <- paste0("UM0000XXX", 0:5)
-NL_target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
-NL_target_df$UDS_dx <- rep("NL target", 6)
-NL_target_df$Dx_Count <- c(0, 125, 125, 125, 125, 125)
-ms_reg_NL <- ms_reg %>%
-  filter(UDS_dx == "NL")
-ggplot(ms_reg_NL, aes(x = Exam_Date, color = UDS_dx, linetype = UDS_dx)) +
-  geom_line(aes(len = Dx_Count, y = ..y.. * len), stat = "ecdf", size = 1) +
-  geom_line(data = NL_target_df, aes(x = Exam_Date, y = Dx_Count)) +
-  geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
-  scale_x_date(name = "Visit Date",
-               date_labels = "%b %y",
-               date_breaks = "6 months",
-               date_minor_breaks = "1 month",
-               limits = as.Date(c("2017-01-01", "2022-03-01"))) +
-  scale_y_continuous(name = "Cumulative Participants",
-                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle(label = "Participants Over Time - NL vs. NL target (125)")
-ggsave("plots/UDS_Enrolled_plot-NL_targets.png", width = 5, height = 3.3)
+## Diagnosis counts vs. target diagnosis counts
+# Target diagnoses plot function
+plot_target_dx <- function(ms_df, diagnosis, diagnosis_target, yearly_targets) {
+  target_df <- data.frame(matrix(rep(NA, ncol(ms_df) * 6), nrow = 6, byrow = TRUE))
+  names(target_df) <- names(ms_df)
+  target_df$Subject_Id <- paste0("UM0000XXX", 0:5)
+  target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
+  target_df$UDS_dx <- rep(diagnosis_target, 6)
+  target_df$DxCumSum <- yearly_targets
+  ms_df %>%
+    dplyr::filter(UDS_dx == diagnosis) %>%
+    dplyr::bind_rows(target_df) %>%
+    ggplot(aes(x = Exam_Date, y = DxCumSum, group = UDS_dx, color = UDS_dx, linetype = UDS_dx)) +
+    geom_line() +
+    geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
+    scale_x_date(name = "Visit Date",
+                 date_labels = "%b %y",
+                 date_breaks = "6 months",
+                 date_minor_breaks = "1 month",
+                 limits = as.Date(c("2017-01-01", "2022-03-01"))) +
+    scale_y_continuous(name = "Cumulative Participants",
+                       breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    ggtitle(label = paste0("Participants Over Time - ", diagnosis, " vs. ", diagnosis_target))
+}
+# NL targets (normal)
+plot_target_dx(ms_reg, "NL", "NL target", c(0, 125, 125, 125, 125, 125))
+ggsave(filename = "plots/UDS_Enrolled_plot-NL_targets.png", width = 6, height = 4)
+# MCI targets
+plot_target_dx(ms_reg, "MCI", "MCI target", c(0, 50, 100, 100, 100, 100))
+ggsave(filename = "plots/UDS_Enrolled_plot-MCI_targets.png", width = 6, height = 4)
+# AD targets
+plot_target_dx(ms_reg, "AD", "AD target", c(0, 18, 23, 36, 47, 58))
+ggsave(filename = "plots/UDS_Enrolled_plot-AD_targets.png", width = 6, height = 4)
+# LBD targets
+plot_target_dx(ms_reg, "LBD", "LBD target", c(0, 10, 19, 38, 40, 37))
+ggsave(filename = "plots/UDS_Enrolled_plot-LBD_targets.png", width = 6, height = 4)
+# FTD targets
+plot_target_dx(ms_reg, "FTD", "FTD target", c(0, 5, 19, 22, 35, 36))
+ggsave(filename = "plots/UDS_Enrolled_plot-FTD_targets.png", width = 6, height = 4)
 
-# MCI diagnosis targets
-MCI_target_df <- 
-  data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
-names(MCI_target_df) <- names(ms_reg)
-MCI_target_df$Subject_ID <- paste0("UM0000XXX", 0:5)
-MCI_target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
-MCI_target_df$UDS_dx <- rep("MCI target", 6)
-MCI_target_df$Dx_Count <- c(0, 50, 100, 100, 100, 100)
-ms_reg_MCI <- ms_reg %>%
-  filter(UDS_dx == "MCI")
-ggplot(ms_reg_MCI, aes(x = Exam_Date, color = UDS_dx, linetype = UDS_dx)) +
-  geom_line(aes(len = Dx_Count, y = ..y.. * len), stat = "ecdf", size = 1) +
-  geom_line(data = MCI_target_df, aes(x = Exam_Date, y = Dx_Count)) +
-  geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
-  scale_x_date(name = "Visit Date",
-               date_labels = "%b %y",
-               date_breaks = "6 months",
-               date_minor_breaks = "1 month",
-               limits = as.Date(c("2017-01-01", "2022-03-01"))) +
-  scale_y_continuous(name = "Cumulative Participants",
-                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle(label = "Participants Over Time - MCI vs. MCI target (100)")
-ggsave("plots/UDS_Enrolled_plot-MCI_targets.png", width = 5, height = 3.3)
-
-# AD diagnosis targets
-AD_target_df <- 
-  data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
-names(AD_target_df) <- names(ms_reg)
-AD_target_df$Subject_ID <- paste0("UM0000XXX", 0:5)
-AD_target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
-AD_target_df$UDS_dx <- rep("Probable AD target", 6)
-AD_target_df$Dx_Count <- c(0, 18, 23, 36, 47, 58)
-ms_reg_AD <- ms_reg %>%
-  filter(UDS_dx == "Probable AD")
-ggplot(ms_reg_AD, aes(x = Exam_Date, color = UDS_dx, linetype = UDS_dx)) +
-  geom_line(aes(len = Dx_Count, y = ..y.. * len), stat = "ecdf", size = 1) +
-  geom_line(data = AD_target_df, aes(x = Exam_Date, y = Dx_Count)) +
-  geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
-  scale_x_date(name = "Visit Date",
-               date_labels = "%b %y",
-               date_breaks = "6 months",
-               date_minor_breaks = "1 month",
-               limits = as.Date(c("2017-01-01", "2022-03-01"))) +
-  scale_y_continuous(name = "Cumulative Participants",
-                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle(label = "Participants Over Time - AD vs. AD target (50)")
-ggsave("plots/UDS_Enrolled_plot-AD_targets.png", width = 5, height = 3.3)
-
-# LBD diagnosis targets
-LBD_target_df <- 
-  data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
-names(LBD_target_df) <- names(ms_reg)
-LBD_target_df$Subject_ID <- paste0("UM0000XXX", 0:5)
-LBD_target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
-LBD_target_df$UDS_dx <- rep("LBD target", 6)
-LBD_target_df$Dx_Count <- c(0, 10, 19, 38, 40, 37)
-ms_reg_LBD <- ms_reg %>%
-  filter(UDS_dx == "LBD")
-ggplot(ms_reg_LBD, aes(x = Exam_Date, color = UDS_dx, linetype = UDS_dx)) +
-  geom_line(aes(len = Dx_Count, y = ..y.. * len), stat = "ecdf", size = 1) +
-  geom_line(data = LBD_target_df, aes(x = Exam_Date, y = Dx_Count)) +
-  geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
-  scale_x_date(name = "Visit Date",
-               date_labels = "%b %y",
-               date_breaks = "6 months",
-               date_minor_breaks = "1 month",
-               limits = as.Date(c("2017-01-01", "2022-03-01"))) +
-  scale_y_continuous(name = "Cumulative Participants",
-                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle(label = "Participants Over Time - LBD vs. LBD target (35)")
-ggsave("plots/UDS_Enrolled_plot-LBD_targets.png", width = 5, height = 3.3)
-
-# FTD diagnosis targets
-FTD_target_df <- 
-  data.frame(matrix(rep(NA, ncol(ms_reg) * 6), nrow = 6, byrow = TRUE))
-names(FTD_target_df) <- names(ms_reg)
-FTD_target_df$Subject_ID <- paste0("UM0000XXX", 0:5)
-FTD_target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
-FTD_target_df$UDS_dx <- rep("FTD target", 6)
-FTD_target_df$Dx_Count <- c(0, 5, 19, 22, 35, 35)
-ms_reg_FTD <- ms_reg %>%
-  filter(UDS_dx == "FTD")
-ggplot(ms_reg_FTD, aes(x = Exam_Date, color = UDS_dx, linetype = UDS_dx)) +
-  geom_line(aes(len = Dx_Count, y = ..y.. * len), stat = "ecdf", size = 1) +
-  geom_line(data = FTD_target_df, aes(x = Exam_Date, y = Dx_Count)) +
-  geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
-  scale_x_date(name = "Visit Date",
-               date_labels = "%b %y",
-               date_breaks = "6 months",
-               date_minor_breaks = "1 month",
-               limits = as.Date(c("2017-01-01", "2022-03-01"))) +
-  scale_y_continuous(name = "Cumulative Participants",
-                     breaks = seq(0, nrow(ms_reg) + 10, by = 10)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle(label = "Participants Over Time - FTD vs. FTD target (35)")
-ggsave("plots/UDS_Enrolled_plot-FTD_targets.png", width = 5, height = 3.3)
-
-# There has to be a better/scalable way to create these 
-# Cumulative Frequency Plots ...
-# maybe:
-# https://stackoverflow.com/questions/18379933/plotting-cumulative-counts-in-ggplot2
-# Empirical Cumulative Distribution Function
-# df <- data.frame(
-#   x = c(rnorm(100, 0, 3), rnorm(100, 0, 10)),
-#   g = gl(2, 100),
-#   u = rep(1, 200),
-#   n = seq(1, 200)
-# )
-# cumsum(df$u)
-# ggplot(df, aes(x = n, y = cumsum(u), color = g)) + geom_line()
 
 
 
