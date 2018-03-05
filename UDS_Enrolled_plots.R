@@ -18,66 +18,87 @@
 # # default output file
 # args[2] = "out.txt"
 #}
+# # Choose the csv file from the UMMAP Mindset Registry RC report
+# # ms_reg_file <- args[1]
+# ms_reg_file <- 
+#   file.path("input_csv", 
+#             "UMMAPMindsetRegistry_DATA_LABELS_2018-03-05_1048.csv")
+# ms_reg <- read_csv(file = ms_reg_file, trim_ws = TRUE)
+
+source("config.R") # contains API URL and API token
+library(RCurl)
+library(jsonlite)
+if (!exists("report_df")) {
+  # Project report
+  report_json <- postForm(
+    uri = API_URL,
+    token = API_TOKEN,
+    content = 'report',
+    format = 'json',
+    report_id = REPORT_ID,
+    rawOrLabel = 'label',
+    rawOrLabelHeaders = 'label',
+    exportCheckboxLabel = 'false',
+    returnFormat = 'json',
+    .opts = list(ssl.verifypeer = TRUE, verbose = TRUE)
+  )
+  report_df <- fromJSON(report_json)
+  # print(report_df) # 'report should be the same as 'ms_reg' after the read_csv below
+}
+ms_reg <- report_df
 
 library(tidyverse)
 
-# Choose the csv file from the UMMAP Mindset Registry RC report
-# ms_reg_file <- args[1]
-ms_reg_file <- 
-  file.path("input_csv", 
-            "UMMAPMindsetRegistry_DATA_LABELS_2018-03-05_1048.csv")
-ms_reg <- read_csv(file = ms_reg_file, trim_ws = TRUE)
-
-names(ms_reg) <- 
-  gsub(pattern = "[ [:punct:]]", replacement = "_", names(ms_reg))
+# names(ms_reg) <- 
+#   gsub(pattern = "[ [:punct:]]", replacement = "_", names(ms_reg))
 names(ms_reg)
 
-# Coerce 'Exam_Date' column to Date
-ms_reg$Exam_Date <- as.Date(ms_reg$Exam_Date, format = "%m/%d/%y")
+# Coerce 'exam_date' column to Date
+ms_reg$exam_date <- as.Date(ms_reg$exam_date, format = "%Y-%m-%d")
 # Coerce 'Race' column to factor
-ms_reg$Race <- factor(ms_reg$Race, levels = c("Black", "White", "Other"))
+ms_reg$race_value <- factor(ms_reg$race_value, levels = c("Black", "White", "Other"))
 # Coerce 'Sex' column to factor
-ms_reg$Sex <- factor(ms_reg$Sex, levels = c("Female", "Male"))
-# Clean up 'UDS_dx' column (few factors); Coerce 'UDS_dx' column to factor
+ms_reg$sex_value <- factor(ms_reg$sex_value, levels = c("Female", "Male"))
+# Clean up 'uds_dx' column (few factors); Coerce 'uds_dx' column to factor
 ms_reg <- ms_reg %>% 
-  mutate(UDS_dx = case_when(
-    UDS_dx == "Amnestic MCI-memory only" ~ "MCI",
-    UDS_dx == "Amnestic MCI-memory plus" ~ "MCI",
-    UDS_dx == "Amnestic MCI, multiple domains" ~ "MCI",
-    UDS_dx == "Amnestic MCI, single domain" ~ "MCI",
-    UDS_dx == 
+  mutate(uds_dx = case_when(
+    uds_dx == "Amnestic MCI-memory only" ~ "MCI",
+    uds_dx == "Amnestic MCI-memory plus" ~ "MCI",
+    uds_dx == "Amnestic MCI, multiple domains" ~ "MCI",
+    uds_dx == "Amnestic MCI, single domain" ~ "MCI",
+    uds_dx == 
       "Amnestic multidomain dementia syndrome" ~ "Amnestic multidom dem",
-    UDS_dx == "Dem with Lewy bodies" ~ "LBD",
-    # UDS_dx == "FTD" ~ "FTD",
-    # UDS_dx == "Impaired, not MCI" ~ "Impaired, not MCI",
-    # UDS_dx == "NL" ~ "NL",
-    UDS_dx == "Non-Amnestic MCI-multiple domains" ~ "MCI",
-    UDS_dx == "Non-Amnestic MCI-single domain" ~ "MCI",
-    UDS_dx == "Primary progressive aphasia" ~ "FTD",
-    UDS_dx == "Probable AD" ~ "AD",
-    is.na(UDS_dx) & Completed_Withdrew_ == "Y" ~ "Withdrew",
-    is.na(UDS_dx) & is.na(Completed_Withdrew_) ~ "Pending consensus dx",
-    TRUE ~ UDS_dx
+    uds_dx == "Dem with Lewy bodies" ~ "LBD",
+    # uds_dx == "FTD" ~ "FTD",
+    # uds_dx == "Impaired, not MCI" ~ "Impaired, not MCI",
+    # uds_dx == "NL" ~ "NL",
+    uds_dx == "Non-Amnestic MCI-multiple domains" ~ "MCI",
+    uds_dx == "Non-Amnestic MCI-single domain" ~ "MCI",
+    uds_dx == "Primary progressive aphasia" ~ "FTD",
+    uds_dx == "Probable AD" ~ "AD",
+    is.na(uds_dx) & comp_withd == "Y" ~ "Withdrew",
+    is.na(uds_dx) & is.na(comp_withd) ~ "Pending consensus dx",
+    TRUE ~ uds_dx
   ))
-ms_reg$UDS_dx <- 
-  factor(ms_reg$UDS_dx, 
+ms_reg$uds_dx <- 
+  factor(ms_reg$uds_dx, 
          levels = c("NL", "Impaired, not MCI", "MCI", "AD", 
                     "Amnestic multidom dem", "LBD", "FTD", 
                     "Pending consensus dx", "Withdrew"))
 # Coerce 'Deceased_' column to logical
-ms_reg$Deceased_ <- as.logical(ms_reg$Deceased_)
+ms_reg$pt_deceased <- as.logical(ms_reg$pt_deceased)
 
 # Check classes of each column in ms_reg
 sapply(ms_reg, class) # Looks good
 
-# Sort ms_reg by 'Exam_Date'
+# Sort ms_reg by 'exam_date'
 ms_reg <- ms_reg %>%
-  arrange(Exam_Date)
+  arrange(exam_date)
 min_date <- as.Date("2017-03-01", format = "%Y-%m-%d")
-max_date <- max(ms_reg$Exam_Date)
+max_date <- max(ms_reg$exam_date)
 
 # Plot cumulative participants
-ggplot(ms_reg, aes(x = Exam_Date, y = as.numeric(rownames(ms_reg)))) +
+ggplot(ms_reg, aes(x = exam_date, y = as.numeric(rownames(ms_reg)))) +
   geom_line() +
   geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
   scale_x_date(name = "Visit Date",
@@ -96,19 +117,19 @@ ggsave(filename = "plots/UDS_Enrolled_plot-Total_participants.png", width = 6, h
 ms_reg <- bind_cols(ms_reg, data.frame(units = rep(1, nrow(ms_reg))))
 # Sex
 ms_reg <- ms_reg %>%
-  dplyr::group_by(Sex) %>% 
+  dplyr::group_by(sex_value) %>% 
   dplyr::mutate(SexCumSum = cumsum(units))
 # Race
 ms_reg <- ms_reg %>%
-  dplyr::group_by(Race) %>% 
+  dplyr::group_by(race_value) %>% 
   dplyr::mutate(RaceCumSum = cumsum(units))
-# Diagnosis (UDS_dx)
+# Diagnosis (uds_dx)
 ms_reg <- ms_reg %>% 
-  dplyr::group_by(UDS_dx) %>% 
+  dplyr::group_by(uds_dx) %>% 
   dplyr::mutate(DxCumSum = cumsum(units))
 
 # Plot cumulative participants by Sex
-ggplot(ms_reg, aes(x = Exam_Date, y = SexCumSum, group = Sex, color = Sex)) + 
+ggplot(ms_reg, aes(x = exam_date, y = SexCumSum, group = sex_value, color = sex_value)) + 
   geom_line() +
   geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
   scale_x_date(name = "Visit Date",
@@ -122,7 +143,7 @@ ggplot(ms_reg, aes(x = Exam_Date, y = SexCumSum, group = Sex, color = Sex)) +
   ggtitle(label = "Participants Over Time by Sex")
 ggsave(filename = "plots/UDS_Enrolled_plot-Participants_by_sex.png", width = 6, height = 4)
 # Plot cumulative participants by Race
-ggplot(ms_reg, aes(x = Exam_Date, y = RaceCumSum, gruop = Race, color = Race)) + 
+ggplot(ms_reg, aes(x = exam_date, y = RaceCumSum, group = race_value, color = race_value)) + 
   geom_line() +
   geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
   scale_x_date(name = "Visit Date",
@@ -135,8 +156,8 @@ ggplot(ms_reg, aes(x = Exam_Date, y = RaceCumSum, gruop = Race, color = Race)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ggtitle(label = "Participants Over Time by Race")
 ggsave(filename = "plots/UDS_Enrolled_plot-Participants_by_race.png", width = 6, height = 4)
-# Plot cumulative participants by Diagnosis (UDS_dx)
-ggplot(ms_reg, aes(x = Exam_Date, y = DxCumSum, group = UDS_dx, color = UDS_dx)) +
+# Plot cumulative participants by Diagnosis (uds_dx)
+ggplot(ms_reg, aes(x = exam_date, y = DxCumSum, group = uds_dx, color = uds_dx)) +
   geom_line() +
   geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
   scale_x_date(name = "Visit Date",
@@ -157,13 +178,13 @@ plot_target_dx <- function(ms_df, diagnosis, diagnosis_target, yearly_targets) {
   target_df <- data.frame(matrix(rep(NA, ncol(ms_df) * 6), nrow = 6, byrow = TRUE))
   names(target_df) <- names(ms_df)
   target_df$Subject_Id <- paste0("UM0000XXX", 0:5)
-  target_df$Exam_Date <- as.Date(paste0(2017:2022, "-03-01"))
-  target_df$UDS_dx <- rep(diagnosis_target, 6)
+  target_df$exam_date <- as.Date(paste0(2017:2022, "-03-01"))
+  target_df$uds_dx <- rep(diagnosis_target, 6)
   target_df$DxCumSum <- yearly_targets
   ms_df %>%
-    dplyr::filter(UDS_dx == diagnosis) %>%
+    dplyr::filter(uds_dx == diagnosis) %>%
     dplyr::bind_rows(target_df) %>%
-    ggplot(aes(x = Exam_Date, y = DxCumSum, group = UDS_dx, color = UDS_dx, linetype = UDS_dx)) +
+    ggplot(aes(x = exam_date, y = DxCumSum, group = uds_dx, color = uds_dx, linetype = uds_dx)) +
     geom_line() +
     geom_vline(xintercept = Sys.Date(), color = "darkgrey", linetype = "longdash") +
     scale_x_date(name = "Visit Date",
