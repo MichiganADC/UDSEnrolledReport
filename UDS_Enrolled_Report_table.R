@@ -25,8 +25,8 @@
 # args[2] = "out.txt"
 #}
 # # Choose the csv file from the UMMAP Mindset Registry RC report
-# ms_reg_file <- args[1]
-# ms_reg <- readr::read_csv(file = ms_reg_file, trim_ws = TRUE)
+# report_df_file <- args[1]
+# report_df <- readr::read_csv(file = report_df_file, trim_ws = TRUE)
 
 
 #####
@@ -37,9 +37,9 @@
 source("config.R") # contains API URL and API token
 library(RCurl)
 library(jsonlite)
-if (!exists(report_df)) {
+if (!exists("report_df_api")) {
   # Project report
-  report_json <- postForm(
+  report_json_api <- postForm(
     uri = API_URL,
     token = API_TOKEN,
     content = 'report',
@@ -51,22 +51,63 @@ if (!exists(report_df)) {
     returnFormat = 'json',
     .opts = list(ssl.verifypeer = TRUE, verbose = TRUE)
   )
-  report_df <- fromJSON(report_json)
-  # print(report_df) # 'report should be the same as 'ms_reg' after the read_csv below
+  report_df_api <- fromJSON(report_json_api)
 }
-ms_reg <- report_df
+report_df <- report_df_api
+
 
 library(tidyverse)
+library(lubridate)
 
-# names(ms_reg) <- 
-#   gsub(pattern = "[ [:punct:]]", replacement = "_", names(ms_reg))
-names(ms_reg)
+# names(report_df) <- 
+#   gsub(pattern = "[ [:punct:]]", replacement = "_", names(report_df))
+names(report_df)
 
 # Clean out unneeded columns
-# ms_reg <- ms_reg %>% 
+# report_df <- report_df %>% 
 #   select(-Event_Name, -Deceased_, -Exam_Date) 
-ms_reg <- ms_reg %>% 
+report_df <- report_df %>% 
   select(-redcap_event_name, -pt_deceased, -exam_date)
+
+# Calculate current age
+report_df <- report_df %>%
+  mutate(age = as.period(today(tzone = "UTC") - ymd(birth_date)) / years(1))
+# Bin ages
+report_df <- report_df %>% 
+  mutate(age_bin = case_when(
+    age < 65.0 ~ "<65",
+    age >= 65.0 & age < 70.0 ~ "65-69",
+    age >= 70.0 & age < 75.0 ~ "70-74",
+    age >= 75.0 & age < 80.0 ~ "75-79",
+    age >= 80.0 & age < 85.0 ~ "80-84",
+    age >= 85.0 ~ "85+",
+    TRUE ~ "Unk"
+  ))
+
+# Clean up 'uds_dx' column (few factors)
+report_df <- report_df %>% 
+  mutate(uds_dx = case_when(
+    uds_dx == "Amnestic MCI-memory only" ~ "MCI",
+    uds_dx == "Amnestic MCI-memory plus" ~ "MCI",
+    uds_dx == "Amnestic MCI, multiple domains" ~ "MCI",
+    uds_dx == "Amnestic MCI, single domain" ~ "MCI",
+    uds_dx == 
+      "Amnestic multidomain dementia syndrome" ~ "Amnestic multidom dem",
+    uds_dx == "Dem with Lewy bodies" ~ "LBD",
+    # uds_dx == "FTD" ~ "FTD",
+    # uds_dx == "Impaired, not MCI" ~ "Impaired, not MCI",
+    # uds_dx == "NL" ~ "NL",
+    uds_dx == "Non-Amnestic MCI-multiple domains" ~ "MCI",
+    uds_dx == "Non-Amnestic MCI-single domain" ~ "MCI",
+    uds_dx == "Primary progressive aphasia" ~ "FTD",
+    uds_dx == "Probable AD" ~ "AD",
+    is.na(uds_dx) & comp_withd == "Y" ~ "Withdrew",
+    is.na(uds_dx) & is.na(comp_withd) ~ "Pending consensus dx",
+    is.na(uds_dx) | uds_dx == "" ~ "x dx blank",
+    TRUE ~ uds_dx
+  ))
+report_df <- report_df %>% 
+  mutate(race_value = ifelse((is.na(race_value) | race_value == ""), "Unk", race_value))
 
 # Fxn for outputting tables with one group variable
 single_grp_table <- function(x, group_var) {
@@ -112,58 +153,64 @@ triple_grp_table <- function(x, group_var_1, group_var_2, group_var_3) {
 
 # Total counts
 total_cts <- 
-  single_grp_table(ms_reg, 
+  single_grp_table(report_df, 
                    group_var = quo(uds_dx))
 # Sex counts
 sex_cts <- 
-  double_grp_table(ms_reg, 
+  double_grp_table(report_df, 
                    group_var_1 = quo(uds_dx), 
                    group_var_2 = quo(sex_value))
 # Race counts
 race_cts <- 
-  double_grp_table(ms_reg, 
+  double_grp_table(report_df, 
                    group_var_1 = quo(uds_dx), 
                    group_var_2 = quo(race_value))
 # Sex + Race counts
 sex_race_cts <- 
-  triple_grp_table(ms_reg, 
+  triple_grp_table(report_df, 
                    group_var_1 = quo(uds_dx), 
                    group_var_2 = quo(sex_value), 
                    group_var_3 = quo(race_value))
+# Age bin counts
+age_bin_cts <- 
+  double_grp_table(report_df,
+                   group_var_1 = quo(uds_dx),
+                   group_var_2 = quo(age_bin))
 # Autopsy Consent counts
 autopsy_yes_cts <-
-  single_grp_filter_table(ms_reg, 
+  single_grp_filter_table(report_df, 
                           group_var = quo(uds_dx), 
                           filter_var = quo(consent_to_autopsy), 
                           filter_var_string = "Yes")
 # Autopsy Consent counts 
 autopsy_consid_cts <- 
-  single_grp_filter_table(ms_reg,
+  single_grp_filter_table(report_df,
                           group_var = quo(uds_dx),
                           filter_var = quo(consent_to_autopsy),
                           filter_var_string = "Considering")
 # MRI Yes counts
 mri_yes_cts <- 
-  single_grp_filter_table(ms_reg,
+  single_grp_filter_table(report_df,
                           group_var = quo(uds_dx),
                           filter_var = quo(mri_completed),
                           filter_var_string = "1. Yes")
 # Blood Drawn Yes counts
 blood_yes_cts <- 
-  single_grp_filter_table(ms_reg,
+  single_grp_filter_table(report_df,
                           group_var = quo(uds_dx),
                           filter_var = quo(blood_drawn),
                           filter_var_string = "1. Yes")
 
 # Stitch all *_cts dfs together
 big_tbl <- 
-  bind_cols(total_cts, sex_cts[, -1], race_cts[, -1], sex_race_cts[, -1], 
+  bind_cols(total_cts, sex_cts[, -1], race_cts[, -1], 
+            age_bin_cts[, -1], sex_race_cts[, -1], 
             autopsy_yes_cts[, -1], autopsy_consid_cts[, -1],
             mri_yes_cts[, -1], blood_yes_cts[, -1])
 
 # Replace "NA" diagnosis row label with "X_Diagnosis_Blank_X"
 # big_tbl[!(grepl(pattern = ".*", x = big_tbl$uds_dx)), "uds_dx"]
-big_tbl[!(grepl(pattern = ".*", x = big_tbl$uds_dx)), "uds_dx"] <- "X_Diagnosis_Blank_X"
+big_tbl[!(grepl(pattern = ".*", x = big_tbl$uds_dx)), "uds_dx"] <- "x dx blank"
 
 
 # Build totals row
@@ -223,9 +270,9 @@ write_csv(big_tbl, path = export_csv, na = "")
 #     right_join(distinct_grp_vals) %>% 
 #     arrange(!!group_var)
 # }
-# single_grp_table(ms_reg, group_var = quo(uds_dx))
-# distinct(ms_reg, uds_dx)
-# tibble(uds_dx = distinct(ms_reg, uds_dx))
+# single_grp_table(report_df, group_var = quo(uds_dx))
+# distinct(report_df, uds_dx)
+# tibble(uds_dx = distinct(report_df, uds_dx))
 #########################
 ### NSE dplyr TESTING ###
 #########################
